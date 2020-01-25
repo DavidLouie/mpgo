@@ -2,40 +2,79 @@ package server
 
 import (
     "fmt"
-    "log"
+    "path/filepath"
     "os"
     "time"
 
     "github.com/faiface/beep"
+    "github.com/faiface/beep/effects"
     "github.com/faiface/beep/mp3"
     "github.com/faiface/beep/speaker"
 )
 
-func Play(song string) {
-    f, err := os.Open(song)
+const sampleRate = 44100
+
+func GetFiles(root string) ([]string, error) {
+    ext := "*.mp3"
+    var matches []string
+    err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+        if err != nil {
+            return  err
+        }
+        if info.IsDir() {
+            return nil
+        }
+        if matched, err := filepath.Match(ext, filepath.Base(path)); err != nil {
+            return err
+        } else if matched {
+            matches = append(matches, path)
+        }
+        return nil
+    })
     if err != nil {
-        log.Fatal(err)
+        return nil, err
     }
+    return matches, nil
+}
 
-    streamer, format, err := mp3.Decode(f)
-    if err != nil {
-        log.Fatal(err)
-    }
-    defer streamer.Close()
-
-
-    sr := format.SampleRate
+func Play() {
+    sr := beep.SampleRate(sampleRate)
     speaker.Init(sr, sr.N(time.Second / 10))
 
-    ctrl := &beep.Ctrl{Streamer: beep.Loop(-1, streamer), Paused: false}
-    speaker.Play(ctrl)
+    var queue Queue
+    speaker.Play(&queue)
 
     for {
-        fmt.Print("Press [ENTER] to pause/resume.")
-        fmt.Scanln()
+        var name string
+        fmt.Print("Type an MP3 file name: ")
+        fmt.Scanln(&name)
+
+        f, err := os.Open(name)
+        if err != nil {
+            fmt.Println(err)
+            continue
+        }
+
+        streamer, format, err := mp3.Decode(f)
+        if err != nil {
+            fmt.Println(err)
+            continue
+        }
+
+        // set the volume of the streamer
+        volume := &effects.Volume{
+            Streamer:   streamer,
+            Base:       2,
+            Volume:     -4,
+            Silent:     false,
+        }
+
+        // we fixed speaker's sample rate,
+        // so need to resample file in case it doesn't match
+        resampled := beep.Resample(4, format.SampleRate, sr, volume)
 
         speaker.Lock()
-        ctrl.Paused = !ctrl.Paused
+        queue.Add(resampled)
         speaker.Unlock()
     }
 }

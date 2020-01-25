@@ -1,13 +1,11 @@
 package main
 
-/*import (
-    "bufio"
+import (
     "fmt"
     "log"
-    "os"
 
     "github.com/davidlouie/mpgo/server"
-)*/
+)
 
 func main() {
     /*for {
@@ -20,5 +18,14 @@ func main() {
             log.Fatal(scanner.Err())
         }
     }*/
-    Init()
+    // Init()
+    filepaths, err := server.GetFiles("/home/david/Music/")
+    if err != nil {
+        log.Fatal(err)
+    }
+    for _, filepath := range filepaths {
+        fmt.Println(filepath)
+    }
+
+    server.Play()
 }

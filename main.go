@@ -1,7 +1,9 @@
 package main
 
-import "fmt"
+import (
+    "github.com/davidlouie/mpgo/server"
+)
 
 func main() {
-    fmt.Println("Hello world!")
+    server.Play("hurt_feelings.mp3")
 }

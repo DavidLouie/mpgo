@@ -10,7 +10,23 @@ import (
     "github.com/rivo/tview"
 )
 
+var PAGE_MAP = map[rune]string{
+    '1': "browsing",
+    '2': "queue",
+}
+
 func Init() {
+    app := tview.NewApplication()
+    pages := tview.NewPages()
+    initBrowsingPage(pages)
+    initQueuePage(pages)
+    if err := app.SetRoot(pages, true).SetFocus(pages).Run(); err != nil {
+        panic(err)
+    }
+}
+
+// creates the browsing page and adds it to the Pages
+func initBrowsingPage(pages *tview.Pages) {
     rootDir := "."
     root := tview.NewTreeNode(rootDir).
             SetColor(tcell.ColorRed)
@@ -20,9 +36,29 @@ func Init() {
 
     getFiles(root, rootDir)
     tree.SetSelectedFunc(openDir)
-    if err := tview.NewApplication().SetRoot(tree, true).Run(); err != nil {
-        panic(err)
+    tree.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+        return swapPage(pages, event)
+    })
+    pages.AddPage("browsing", tree, false, true)
+}
+
+// changes the page to the page specified in PAGE_MAP
+func swapPage(pages *tview.Pages, event *tcell.EventKey) *tcell.EventKey {
+    if val, ok := PAGE_MAP[event.Rune()]; ok {
+        pages.SwitchToPage(val)
+        return nil
     }
+    return event
+}
+
+// creates the queue page and adds it to the Pages
+func initQueuePage(pages *tview.Pages) {
+    list := tview.NewList()
+    list.AddItem("Hello world!", "", '0', nil)
+    list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+        return swapPage(pages, event)
+    })
+    pages.AddPage("queue", list, false, false)
 }
 
 // builds the file treeview, only showing directories and mp3s

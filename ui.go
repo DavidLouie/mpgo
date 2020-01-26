@@ -1,6 +1,7 @@
 package main
 
 import (
+    "io"
     "io/ioutil"
     "os"
     "path/filepath"
@@ -85,19 +86,20 @@ func swapPage(pages *tview.Pages, event *tcell.EventKey) *tcell.EventKey {
 
 // creates the queue page and adds it to the Pages
 func initQueuePage(pages *tview.Pages, c <-chan string) {
-    list := tview.NewList()
-    list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+    textView := tview.NewTextView().
+                SetDynamicColors(true)
+    textView.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
         return swapPage(pages, event)
     })
-    pages.AddPage(PAGE_MAP['2'], list, false, false)
-    go queueUpdater(list, c)
+    pages.AddPage(PAGE_MAP['2'], textView, false, false)
+    go queueUpdater(textView, c)
 }
 
 // loop routine that updates the queue page when a new song is queued
-func queueUpdater(list *tview.List, c <-chan string) {
+func queueUpdater(textView *tview.TextView, c <-chan string) {
     for {
         queued := <- c
-        list.AddItem(queued, "", '0', nil)
+        io.WriteString(textView, queued + "\n")
     }
 }
 

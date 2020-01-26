@@ -70,5 +70,6 @@ func Add(song string) {
 
     speaker.Lock()
     queue.Add(resampled)
+
     speaker.Unlock()
 }

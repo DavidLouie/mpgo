@@ -7,6 +7,7 @@ import (
     "path/filepath"
 
     "github.com/davidlouie/mpgo/server"
+    "github.com/davidlouie/mpgo/server/subsonic"
     "github.com/gdamore/tcell"
     "github.com/rivo/tview"
 )
@@ -22,6 +23,7 @@ func Init() {
     var c chan string = make(chan string)
     initBrowsingPage(pages, c)
     initQueuePage(pages, c)
+    go subsonic.Init()
     if err := app.SetRoot(pages, true).SetFocus(pages).Run(); err != nil {
         panic(err)
     }

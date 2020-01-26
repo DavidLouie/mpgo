@@ -18,15 +18,16 @@ var PAGE_MAP = map[rune]string{
 func Init() {
     app := tview.NewApplication()
     pages := tview.NewPages()
-    initBrowsingPage(pages)
-    initQueuePage(pages)
+    var c chan string = make(chan string)
+    initBrowsingPage(pages, c)
+    initQueuePage(pages, c)
     if err := app.SetRoot(pages, true).SetFocus(pages).Run(); err != nil {
         panic(err)
     }
 }
 
 // creates the browsing page and adds it to the Pages
-func initBrowsingPage(pages *tview.Pages) {
+func initBrowsingPage(pages *tview.Pages, c chan<- string) {
     rootDir := "."
     root := tview.NewTreeNode(rootDir).
             SetColor(tcell.ColorRed)
@@ -35,11 +36,42 @@ func initBrowsingPage(pages *tview.Pages) {
             SetCurrentNode(root)
 
     getFiles(root, rootDir)
-    tree.SetSelectedFunc(openDir)
+    setTreeCallback(tree, c)
     tree.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
         return swapPage(pages, event)
     })
-    pages.AddPage("browsing", tree, false, true)
+    pages.AddPage(PAGE_MAP['1'], tree, false, true)
+}
+
+// on selected item, either expand the directory or add song to queue
+func setTreeCallback(tree *tview.TreeView, c chan<- string) {
+    tree.SetSelectedFunc(func(node *tview.TreeNode) {
+        reference := node.GetReference()
+
+        // selecting the root node does nothing
+        if reference == nil {
+            return
+        }
+        children := node.GetChildren()
+        if len(children) == 0 {
+            // load and show files in this directory
+            path := reference.(string)
+            file, err := os.Stat(path)
+            switch {
+            case err != nil:
+                panic(err)
+            case file.IsDir():
+                getFiles(node, path)
+            default:
+                name := file.Name()
+                server.Add(name)
+                c <- name
+            }
+        } else {
+            // collapse if visible, expand if collapsed
+            node.SetExpanded(!node.IsExpanded())
+        }
+    })
 }
 
 // changes the page to the page specified in PAGE_MAP
@@ -52,13 +84,21 @@ func swapPage(pages *tview.Pages, event *tcell.EventKey) *tcell.EventKey {
 }
 
 // creates the queue page and adds it to the Pages
-func initQueuePage(pages *tview.Pages) {
+func initQueuePage(pages *tview.Pages, c <-chan string) {
     list := tview.NewList()
-    list.AddItem("Hello world!", "", '0', nil)
     list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
         return swapPage(pages, event)
     })
-    pages.AddPage("queue", list, false, false)
+    pages.AddPage(PAGE_MAP['2'], list, false, false)
+    go queueUpdater(list, c)
+}
+
+// loop routine that updates the queue page when a new song is queued
+func queueUpdater(list *tview.List, c <-chan string) {
+    for {
+        queued := <- c
+        list.AddItem(queued, "", '0', nil)
+    }
 }
 
 // builds the file treeview, only showing directories and mp3s
@@ -83,32 +123,5 @@ func getFiles(target *tview.TreeNode, path string) {
         }
 
         target.AddChild(node)
-    }
-}
-
-// expanding directory or file, adding files if required
-func openDir(node *tview.TreeNode) {
-    reference := node.GetReference()
-
-    // selecting the root node does nothing
-    if reference == nil {
-        return
-    }
-    children := node.GetChildren()
-    if len(children) == 0 {
-        // load and show files in this directory
-        path := reference.(string)
-        file, err := os.Stat(path)
-        switch {
-            case err != nil:
-                panic(err)
-            case file.IsDir():
-                getFiles(node, path)
-            default:
-                server.Add(file.Name())
-        }
-    } else {
-        // collapse if visible, expand if collapsed
-        node.SetExpanded(!node.IsExpanded())
     }
 }

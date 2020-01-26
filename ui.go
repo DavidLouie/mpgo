@@ -1,11 +1,11 @@
 package main
 
 import (
-    "fmt"
     "io/ioutil"
     "os"
     "path/filepath"
 
+    "github.com/davidlouie/mpgo/server"
     "github.com/gdamore/tcell"
     "github.com/rivo/tview"
 )
@@ -51,7 +51,6 @@ func getFiles(target *tview.TreeNode, path string) {
 }
 
 // expanding directory or file, adding files if required
-// TODO: add music file to queue if selected
 func openDir(node *tview.TreeNode) {
     reference := node.GetReference()
 
@@ -70,7 +69,7 @@ func openDir(node *tview.TreeNode) {
             case file.IsDir():
                 getFiles(node, path)
             default:
-                fmt.Println("got non-directory file")
+                server.Add(file.Name())
         }
     } else {
         // collapse if visible, expand if collapsed

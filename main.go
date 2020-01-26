@@ -4,7 +4,7 @@ import (
     //"fmt"
     //"log"
 
-    //"github.com/davidlouie/mpgo/server"
+    "github.com/davidlouie/mpgo/server"
 )
 
 func main() {
@@ -16,6 +16,6 @@ func main() {
         fmt.Println(filepath)
     }*/
 
-    // server.Play()
+    server.Play()
     Init()
 }

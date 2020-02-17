@@ -6,6 +6,7 @@ import (
     "os"
     "time"
 
+    "github.com/davidlouie/mpgo/server/subsonic"
     "github.com/faiface/beep"
     "github.com/faiface/beep/effects"
     "github.com/faiface/beep/mp3"
@@ -39,6 +40,7 @@ func GetFiles(root string) ([]string, error) {
 }
 
 func Play() {
+    subsonic.Init()
     sr := beep.SampleRate(sampleRate)
     speaker.Init(sr, sr.N(time.Second / 10))
     speaker.Play(&queue)

@@ -36,7 +36,7 @@ type subParams struct {
 
 // Initialize server and REST endpoints
 func Init() {
-    http.HandleFunc("/rest/getMusicFolders", GetMusicFolders)
+    http.HandleFunc("/rest/getMusicFolders", getMusicFolders)
     log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
@@ -62,6 +62,36 @@ func parseParams(w http.ResponseWriter, r *http.Request) (*subParams, error) {
     return params, nil
 }
 
+// Authenticates user based on username, token, and salt
+// token must match the MD5 hash of the user's password + salt
+func authenticate(w http.ResponseWriter, params *subParams) error {
+    computedToken := md5.Sum([]byte(password + params.salt))
+    tokenBytes, err := hex.DecodeString(params.token)
+    if err != nil {
+        panic(err)
+    }
+
+    if username != params.username || !bytes.Equal(computedToken[:], tokenBytes) {
+        const ec = 40
+        sendError(w, ec)
+        return errors.New(errorMap[ec])
+    }
+    return nil
+}
+
+// Parses URL parameters and authenticates client
+func parseAndAuth(w http.ResponseWriter, r *http.Request) error {
+    params, err := parseParams(w, r)
+    if err != nil {
+        return err
+    }
+    err = authenticate(w, params)
+    if err != nil {
+        return err
+    }
+    return nil
+}
+
 // Returns an error response to the endpoint
 func sendError(w http.ResponseWriter, code int) {
     if _, ok := errorMap[code]; !ok {
@@ -80,22 +110,5 @@ func sendError(w http.ResponseWriter, code int) {
     w.WriteHeader(http.StatusOK)
     w.Header().Set("Content-Type", "application/xml")
     w.Write(encoded)
-}
-
-// Authenticates user based on username, token, and salt
-// token must match the MD5 hash of the user's password + salt
-func authenticate(w http.ResponseWriter, params *subParams) error {
-    computedToken := md5.Sum([]byte(password + params.salt))
-    tokenBytes, err := hex.DecodeString(params.token)
-    if err != nil {
-        panic(err)
-    }
-
-    if username != params.username || !bytes.Equal(computedToken[:], tokenBytes) {
-        const ec = 40
-        sendError(w, ec)
-        return errors.New(errorMap[ec])
-    }
-    return nil
 }
 

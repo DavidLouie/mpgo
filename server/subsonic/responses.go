@@ -4,18 +4,24 @@ import (
     "encoding/xml"
 )
 
-type SubResp struct {
+type subResp struct {
     XMLName         xml.Name        `xml:"subsonic-response"`
     Status          string          `xml:"status,attr"`
     Version         string          `xml:"version,attr"`
-    MusicFolders    *MusicFolders   `xml:"musicFolders,omitempty"i`
+    ErrorCode       *errorCode      `xml:"error,omitempty"`
+    MusicFolders    *musicFolders   `xml:"musicFolders,omitempty"i`
 }
 
-type MusicFolder struct {
+type errorCode struct {
+    Code      string `xml:"code,attr"`
+    Message   string `xml:"message,attr"`
+}
+
+type musicFolder struct {
     Id      string `xml:"id,attr"`
     Name    string `xml:"name,attr"`
 }
 
-type MusicFolders struct {
-    Folders []MusicFolder `xml:"musicFolder"`
+type musicFolders struct {
+    Folders []musicFolder `xml:"musicFolder"`
 }

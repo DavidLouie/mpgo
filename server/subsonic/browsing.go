@@ -10,15 +10,24 @@ import (
 )
 
 func GetMusicFolders(w http.ResponseWriter, r *http.Request) {
+    params, err := parseParams(w, r)
+    if err != nil {
+        return
+    }
+    err = authenticate(w, params)
+    if err != nil {
+        return
+    }
+
     f := query.GetMusicFolders()
-    response := &SubResp{Status: "ok", Version: "1.16.1"}
-    foldersArr := make([]MusicFolder, len(f))
+    response := &subResp{Status: "ok", Version: apiVersion}
+    foldersArr := make([]musicFolder, len(f))
     for i, folder := range f{
         foldersArr[i].Id = strconv.Itoa(i)
         foldersArr[i].Name = folder
     }
 
-    folders := &MusicFolders{Folders: foldersArr}
+    folders := &musicFolders{Folders: foldersArr}
     response.MusicFolders = folders
     encoded, err := xml.MarshalIndent(response, "  ", "    ")
     if err != nil {

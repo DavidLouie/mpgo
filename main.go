@@ -1,9 +1,10 @@
 package main
 
 import (
-    //"fmt"
+    "fmt"
     //"log"
 
+    "github.com/davidlouie/mpgo/database"
     "github.com/davidlouie/mpgo/server"
 )
 
@@ -16,6 +17,9 @@ func main() {
         fmt.Println(filepath)
     }*/
 
+    fmt.Println("about to call db.Init()")
+    database.Init()
+    database.Scan()
     server.Play()
     Init()
 }

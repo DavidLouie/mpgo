@@ -47,7 +47,7 @@ func getIndexes(w http.ResponseWriter, r *http.Request) {
     sendError(w, 0)
 }
 
-// Returns a listing of all  files in a music directory
+// Returns a listing of all files in a music directory
 func getMusicDirectory(w http.ResponseWriter, r *http.Request) {
     err := parseAndAuth(w, r)
     if err != nil {

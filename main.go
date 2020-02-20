@@ -2,24 +2,18 @@ package main
 
 import (
     "fmt"
-    //"log"
 
     "github.com/davidlouie/mpgo/database"
-    "github.com/davidlouie/mpgo/server"
+    "github.com/davidlouie/mpgo/scanner"
+    // "github.com/davidlouie/mpgo/server"
 )
 
 func main() {
-    /*filepaths, err := server.GetFiles("/home/david/Music/")
-    if err != nil {
-        log.Fatal(err)
-    }
-    for _, filepath := range filepaths {
-        fmt.Println(filepath)
-    }*/
-
-    fmt.Println("about to call db.Init()")
-    database.Init()
-    database.Scan()
-    server.Play()
-    Init()
+    db := database.Init()
+    defer db.Close()
+    fmt.Println("Scanning files")
+    scanner.Scan(db)
+    fmt.Println("Scanning done")
+    // server.Play()
+    // Init()
 }

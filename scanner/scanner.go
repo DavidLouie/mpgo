@@ -2,6 +2,7 @@ package scanner
 
 import (
     "database/sql"
+    "fmt"
     "log"
     "os"
     "path/filepath"
@@ -15,7 +16,8 @@ import (
     _ "github.com/mattn/go-sqlite3"
 )
 
-const folder = "/home/david/Music/"
+// const folder = "/home/david/Music/"
+const folder = "/shared/david/Music/"
 var audioExts = map[string]struct{}{
     ".flac": struct{}{},
     ".mp3": struct{}{},
@@ -50,18 +52,22 @@ func scanFile(db *sql.DB, path string, info os.FileInfo, err error) error {
 
         m, err := tag.ReadFrom(f)
         if err != nil {
-            log.Fatal(err)
+            return nil
         }
         
-        artistId := database.AddArtist(db, m.Artist())
-        albumId := database.AddAlbum(db, m.Artist(), m.Genre(), m.Year(), artistId)
+        duration, err := getDuration(f, fileExt)
+        if err != nil {
+            return nil
+        }
+
+        // artistId := database.AddArtist(db, m.Artist())
+        artistId := database.AddArtist(m.Artist())
+        albumId := database.AddAlbum(m.Album(), m.Genre(), m.Year(), artistId)
 
         trackNo, _ := m.Track()
-        duration := getDuration(f, fileExt)
         size :=  info.Size()
         bitrate := size / int64(duration)
         database.AddSong(
-            db,
             m.Title(),
             duration,
             size,
@@ -71,12 +77,11 @@ func scanFile(db *sql.DB, path string, info os.FileInfo, err error) error {
             fileExt,
             albumId,
         )
-
     }
     return nil
 }
 
-func getDuration(f *os.File, ext string) int {
+func getDuration(f *os.File, ext string) (int, error) {
     var streamer beep.StreamSeeker
     var err error
     switch ext {
@@ -90,8 +95,8 @@ func getDuration(f *os.File, ext string) int {
         log.Fatalf("Wrong filetype %s\n", ext)
     }
     if err != nil {
-        log.Fatal(err)
+        return 0, err
     }
-    return streamer.Len()
+    return streamer.Len(), nil
 }
 

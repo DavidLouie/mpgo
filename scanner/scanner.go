@@ -16,8 +16,8 @@ import (
     _ "github.com/mattn/go-sqlite3"
 )
 
-// const folder = "/home/david/Music/"
-const folder = "/shared/david/Music/"
+const folder = "/home/david/Music/"
+// const folder = "/shared/david/Music/"
 var audioExts = map[string]struct{}{
     ".flac": struct{}{},
     ".mp3": struct{}{},
@@ -27,6 +27,7 @@ var audioExts = map[string]struct{}{
 // Scans for music files starting at folder
 // Assumes folder structure is: {folder}/{Artist}/{Album}/{Song}
 func Scan(db *sql.DB) {
+    database.SetLastScannedTime(db)
     err := filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
         if err != nil {
             return err
@@ -42,8 +43,34 @@ func Scan(db *sql.DB) {
     }
 }
 
+// Scans for new music files created or modified since lastScanned
+func ScanNewFiles(db *sql.DB) {
+    lastScanned := database.GetLastScannedTime(db)
+    fmt.Println("got lastScanned time")
+    fmt.Println(lastScanned)
+    err := filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
+        if err != nil {
+            return err
+        }
+ 
+        if info.IsDir() {
+            return nil
+        }
+
+        if info.ModTime().After(lastScanned) {
+            return scanFile(db, path, info, err)
+        }
+        return nil
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
+// Scans given file and adds it into the library database based on tags
 func scanFile(db *sql.DB, path string, info os.FileInfo, err error) error {
     fileExt := filepath.Ext(path)
+    fmt.Println(filepath.Base(path))
     if _, ok := audioExts[fileExt]; ok {
         f, err := os.Open(path)
         if err != nil {
@@ -60,7 +87,6 @@ func scanFile(db *sql.DB, path string, info os.FileInfo, err error) error {
             return nil
         }
 
-        // artistId := database.AddArtist(db, m.Artist())
         artistId := database.AddArtist(m.Artist())
         albumId := database.AddAlbum(m.Album(), m.Genre(), m.Year(), artistId)
 
@@ -81,6 +107,7 @@ func scanFile(db *sql.DB, path string, info os.FileInfo, err error) error {
     return nil
 }
 
+// Returns the duration of the given flac/mp3/ogg audio file
 func getDuration(f *os.File, ext string) (int, error) {
     var streamer beep.StreamSeeker
     var err error

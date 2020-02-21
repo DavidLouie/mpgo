@@ -11,9 +11,9 @@ import (
 func main() {
     db := database.Init()
     defer db.Close()
-    fmt.Println("Scanning files")
+    fmt.Println("Scanning or updating files")
     scanner.Scan(db)
-    fmt.Println("Scanning done")
+    //scanner.ScanNewFiles(db)
     // server.Play()
     // Init()
 }

@@ -5,11 +5,13 @@ import (
     "fmt"
     "log"
     "os"
+    "time"
 
     _ "github.com/mattn/go-sqlite3"
 )
 
 const dbPath = "./database/mpgo.db"
+const datetimeId = 0
 
 func Init() *sql.DB {
     os.Remove(dbPath) // TODO Remove
@@ -23,51 +25,103 @@ func Init() *sql.DB {
     // If database doesn't exist yet, create tables
     if dbNotExists {
         fmt.Println("creating database")
-
-        sqlStmt := `CREATE TABLE Artists (
-            artistId   INTEGER PRIMARY KEY,
-            artistName VARCHAR(32) UNIQUE
-        )`
-        _, err = db.Exec(sqlStmt)
-        if err != nil {
-            log.Fatal(err)
-        }
-
-        sqlStmt = `CREATE TABLE Albums (
-            albumId    INTEGER PRIMARY KEY,
-            albumTitle VARCHAR(32),
-            genre      VARCHAR(32),
-            date       INTEGER,
-            artistId   INTEGER NOT NULL,
-            FOREIGN KEY (artistId) REFERENCES Artists
-        )`
-        _, err = db.Exec(sqlStmt)
-        if err != nil {
-            log.Fatal(err)
-        }
-
-        sqlStmt = `CREATE TABLE Songs (
-            songId     INTEGER PRIMARY KEY,
-            songTitle  VARCHAR(32),
-            duration   INTEGER,
-            size       INTEGER,
-            number     INTEGER,
-            path       VARCHAR(32),
-            bitrate    INTEGER,
-            ext        INTEGER,
-            albumId    INTEGER NOT NULL,
-            FOREIGN KEY (albumId) REFERENCES Albums
-        )`
-        _, err = db.Exec(sqlStmt)
-        if err != nil {
-            log.Fatal(err)
-        }
+        createArtistsTable(db)
+        createAlbumsTable(db)
+        createSongsTable(db)
+        createDatetimeTable(db)
     }
 
     AddArtist = initAddArtist(db)
     AddAlbum = initAddAlbum(db)
     AddSong = initAddSong(db)
     return db
+}
+
+func createArtistsTable(db *sql.DB) {
+    sqlStmt := `CREATE TABLE Artists (
+        artistId   INTEGER PRIMARY KEY,
+        artistName TEXT UNIQUE
+    )`
+    _, err := db.Exec(sqlStmt)
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
+func createAlbumsTable(db *sql.DB) {
+    sqlStmt := `CREATE TABLE Albums (
+        albumId    INTEGER PRIMARY KEY,
+        albumTitle TEXT,
+        genre      TEXT,
+        date       INTEGER,
+        artistId   INTEGER NOT NULL,
+        FOREIGN KEY (artistId) REFERENCES Artists
+    )`
+    _, err := db.Exec(sqlStmt)
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
+func createSongsTable(db *sql.DB) {
+    sqlStmt := `CREATE TABLE Songs (
+        songId     INTEGER PRIMARY KEY,
+        songTitle  TEXT,
+        duration   INTEGER,
+        size       INTEGER,
+        number     INTEGER,
+        path       TEXT,
+        bitrate    INTEGER,
+        ext        INTEGER,
+        albumId    INTEGER NOT NULL,
+        FOREIGN KEY (albumId) REFERENCES Albums
+    )`
+    _, err := db.Exec(sqlStmt)
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
+func createDatetimeTable(db *sql.DB) {
+    sqlStmt := `CREATE TABLE Datetime (
+        id INTEGER PRIMARY KEY CHECK (id = 0),
+        dt TEXT
+    )`
+    _, err := db.Exec(sqlStmt)
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
+// Inserts or updates the current time into Datetime
+// format is YYYY-MM-DD HH:MM:SS
+func SetLastScannedTime(db *sql.DB) {
+    sqlStmt := `INSERT INTO Datetime (id, dt) VALUES(?, datetime('now'))
+        ON CONFLICT (id) DO UPDATE SET
+        dt = excluded.dt`
+    _, err := db.Exec(sqlStmt, datetimeId)
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
+func GetLastScannedTime(db *sql.DB) time.Time {
+    sqlStmt := "SELECT * FROM Datetime"
+    row := db.QueryRow(sqlStmt, datetimeId)
+    var dtStr string
+    var id int
+    err := row.Scan(&id, &dtStr)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Assumes dtStr is given by a timestamp with format YYYY-MM-DD HH:MM:SS
+    fmt.Println(dtStr)
+    dt, err := time.Parse("2006-01-02 15:04:05", dtStr)
+    if err != nil {
+        log.Fatal(err)
+    }
+    return dt
 }
 
 // Creates the AddArtist func, preparing statements in the closure

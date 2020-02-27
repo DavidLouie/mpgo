@@ -31,11 +31,14 @@ func Init() *sql.DB {
         createAlbumsTable()
         createSongsTable()
         createDatetimeTable()
+        createDirectoryTable()
     }
 
     AddArtist = initAddArtist()
     AddAlbum = initAddAlbum()
     AddSong = initAddSong()
+    AddDirectory = initAddDirectory()
+    GetDirectoryId = initGetDirectoryId()
     return db
 }
 
@@ -52,12 +55,14 @@ func createArtistsTable() {
 
 func createAlbumsTable() {
     sqlStmt := `CREATE TABLE Albums (
-        albumId    INTEGER PRIMARY KEY,
-        albumTitle TEXT,
-        genre      TEXT,
-        date       INTEGER,
-        artistId   INTEGER NOT NULL,
-        FOREIGN KEY (artistId) REFERENCES Artists
+        albumId     INTEGER PRIMARY KEY,
+        albumTitle  TEXT,
+        genre       TEXT,
+        date        INTEGER,
+        artistId    INTEGER NOT NULL,
+        directoryId INTEGER NOT NULL,
+        FOREIGN KEY (artistId) REFERENCES Artists,
+        FOREIGN KEY (directoryId) REFERENCES Directory
     )`
     _, err := db.Exec(sqlStmt)
     if err != nil {
@@ -67,16 +72,18 @@ func createAlbumsTable() {
 
 func createSongsTable() {
     sqlStmt := `CREATE TABLE Songs (
-        songId     INTEGER PRIMARY KEY,
-        songTitle  TEXT,
-        duration   INTEGER,
-        size       INTEGER,
-        number     INTEGER,
-        path       TEXT,
-        bitrate    INTEGER,
-        ext        INTEGER,
-        albumId    INTEGER NOT NULL,
-        FOREIGN KEY (albumId) REFERENCES Albums
+        songId      INTEGER PRIMARY KEY,
+        songTitle   TEXT,
+        duration    INTEGER,
+        size        INTEGER,
+        number      INTEGER,
+        path        TEXT,
+        bitrate     INTEGER,
+        ext         INTEGER,
+        albumId     INTEGER NOT NULL,
+        directoryId INTEGER NOT NULL,
+        FOREIGN KEY (albumId) REFERENCES Albums,
+        FOREIGN KEY (directoryId) REFERENCES Directory
     )`
     _, err := db.Exec(sqlStmt)
     if err != nil {
@@ -88,6 +95,17 @@ func createDatetimeTable() {
     sqlStmt := `CREATE TABLE Datetime (
         id INTEGER PRIMARY KEY CHECK (id = 0),
         dt TEXT
+    )`
+    _, err := db.Exec(sqlStmt)
+    if err != nil {
+        log.Fatal(err)
+    }
+}
+
+func createDirectoryTable() {
+    sqlStmt := `CREATE TABLE Directory (
+        directoryId   INTEGER PRIMARY KEY,
+        directoryPath TEXT
     )`
     _, err := db.Exec(sqlStmt)
     if err != nil {
@@ -160,11 +178,68 @@ func initAddArtist() func(string) int {
     }
 }
 
+var AddDirectory func(directoryPath string) int
+
+func initAddDirectory() func(string) int {
+    // insert if directory doesn't already exist
+    insStmt, err := db.Prepare(`
+        INSERT INTO Directory (directoryId, directoryPath)
+        SELECT NULL, ?
+        WHERE NOT EXISTS (SELECT * FROM Directory
+                          WHERE directoryPath = ?)
+    `)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // get the directoryId of the directory we just inserted
+    qStmt, err := db.Prepare("SELECT directoryId FROM Directory WHERE directoryPath = ?")
+    if err != nil {
+        log.Fatal(err)
+    }
+    return func(directoryPath string) int {
+        _, err = insStmt.Exec(directoryPath, directoryPath)
+        if err != nil {
+            log.Fatal(err)
+        }
+
+        row := qStmt.QueryRow(directoryPath)
+        var directoryId int
+        err = row.Scan(&directoryId)
+        if err != nil {
+            log.Fatal(err)
+        }
+        return directoryId
+    }
+}
+
+var GetDirectoryId func (directoryPath string) int
+
+func initGetDirectoryId() func(string) int {
+    stmt, err := db.Prepare(`
+        SELECT directoryId FROM Directory
+        WHERE directoryPath = ?
+    `)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    return func(directoryPath string) int {
+        row := stmt.QueryRow(directoryPath)
+        var directoryId int
+        err = row.Scan(&directoryId)
+        if err != nil {
+            log.Fatal(err)
+        }
+        return directoryId
+    }
+}
+
 // Adds the artist with given name to database, returning the ID
 var AddArtist func (artistName string) int
 
 // Creates the AddAlbum func, preparing statements in the closure
-func initAddAlbum() func(string, string, int, int) int {
+func initAddAlbum() func(string, string, int, int, string) int {
     // insert if album doesn't already exist
     insStmt, err := db.Prepare(`
         INSERT INTO Albums(albumId, albumTitle, genre, date, artistId)
@@ -182,8 +257,9 @@ func initAddAlbum() func(string, string, int, int) int {
     if err != nil {
         log.Fatal(err)
     }
-    return func(albumTitle string, genre string, date int, artistId int) int {
-        _, err = insStmt.Exec(albumTitle, genre, date, artistId, albumTitle, artistId)
+    return func(albumTitle string, genre string, date int, artistId int, directoryPath string) int {
+        directoryId := GetDirectoryId(directoryPath)
+        _, err = insStmt.Exec(albumTitle, genre, date, artistId, albumTitle, artistId, directoryId)
         if err != nil {
             log.Fatal(err)
         }
@@ -199,10 +275,10 @@ func initAddAlbum() func(string, string, int, int) int {
 }
 
 // Adds the album with given metadata to database, returning the ID
-var AddAlbum func (albumTitle string, genre string, date int, artistId int) int
+var AddAlbum func (albumTitle string, genre string, date int, artistId int, directoryPath string) int
 
 // Creates the AddSong func, preparing statements in the closure
-func initAddSong() func(string, int, int64, int, string, int64, string, int) {
+func initAddSong() func(string, int, int64, int, string, int64, string, int, string) {
     stmt, err := db.Prepare(`
         INSERT INTO Songs(
             songId,
@@ -213,8 +289,9 @@ func initAddSong() func(string, int, int64, int, string, int64, string, int) {
             path,
             bitrate,
             ext,
-            albumId)
-        VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?)
+            albumId,
+            directoryId)
+        VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
     if err != nil {
         log.Fatal(err)
@@ -229,7 +306,9 @@ func initAddSong() func(string, int, int64, int, string, int64, string, int) {
         bitrate int64,
         ext string,
         albumId int,
+        directoryPath string,
     ) {
+        directoryId := GetDirectoryId(directoryPath)
         _, err = stmt.Exec(
             songTitle,
             duration,
@@ -239,6 +318,7 @@ func initAddSong() func(string, int, int64, int, string, int64, string, int) {
             bitrate,
             ext,
             albumId,
+            directoryId,
         )
         if err != nil {
             log.Fatal(err)
@@ -247,14 +327,15 @@ func initAddSong() func(string, int, int64, int, string, int64, string, int) {
 }
 
 var AddSong func(
-        songTitle string,
-        duration  int,
-        size      int64,
-        trackNo   int,
-        path      string,
-        bitrate   int64,
-        ext       string,
-        albumId   int,
+        songTitle     string,
+        duration      int,
+        size          int64,
+        trackNo       int,
+        path          string,
+        bitrate       int64,
+        ext           string,
+        albumId       int,
+        directoryPath string,
 )
 
 func PrintArtists() {

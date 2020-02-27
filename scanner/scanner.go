@@ -1,7 +1,7 @@
 package scanner
 
 import (
-    // "fmt"
+    "fmt"
     "log"
     "os"
     "path/filepath"
@@ -15,7 +15,7 @@ import (
     _ "github.com/mattn/go-sqlite3"
 )
 
-const folder = "/home/david/Music/"
+const folder = "/home/david/Documents/"
 // const folder = "/shared/david/Music/"
 var audioExts = map[string]struct{}{
     ".flac": struct{}{},
@@ -31,8 +31,10 @@ func Scan() {
         if err != nil {
             return err
         }
+        fmt.Println(path)
         
         if info.IsDir() {
+            database.AddDirectory(path)
             return nil 
         }
         return scanFile(path, info, err)
@@ -85,7 +87,8 @@ func scanFile(path string, info os.FileInfo, err error) error {
         }
 
         artistId := database.AddArtist(m.Artist())
-        albumId := database.AddAlbum(m.Album(), m.Genre(), m.Year(), artistId)
+        dir := filepath.Dir(path)
+        albumId := database.AddAlbum(m.Album(), m.Genre(), m.Year(), artistId, dir)
 
         trackNo, _ := m.Track()
         size :=  info.Size()
@@ -99,6 +102,7 @@ func scanFile(path string, info os.FileInfo, err error) error {
             bitrate,
             fileExt,
             albumId,
+            dir,
         )
     }
     return nil

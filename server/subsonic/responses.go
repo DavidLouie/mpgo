@@ -10,6 +10,7 @@ type subResp struct {
     Version         string          `xml:"version,attr"`
     ErrorCode       *errorCode      `xml:"error,omitempty"`
     MusicFolders    *musicFolders   `xml:"musicFolders,omitempty"i`
+    Genres          *genres         `xml:"genres,omitempty"i`
 }
 
 type errorCode struct {
@@ -24,4 +25,14 @@ type musicFolder struct {
 
 type musicFolders struct {
     Folders []musicFolder `xml:"musicFolder"`
+}
+
+type genre struct  {
+    SongCount  string `xml:"songCount,attr"`
+    AlbumCount string `xml:"albumCount,attr"`
+    Genre      string `xml:",chardata"`
+}
+
+type genres struct {
+    Genres []genre `xml:"genre"`
 }

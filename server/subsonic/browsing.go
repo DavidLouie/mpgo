@@ -6,7 +6,7 @@ import (
     "net/http"
     "strconv"
 
-    "github.com/davidlouie/mpgo/query"
+    "github.com/davidlouie/mpgo/database"
 )
 
 // Returns all configured top-level music folders
@@ -16,7 +16,7 @@ func getMusicFolders(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    f := query.GetMusicFolders()
+    f := database.GetMusicFolders()
     response := &subResp{Status: "ok", Version: apiVersion}
     foldersArr := make([]musicFolder, len(f))
     for i, folder := range f{
@@ -43,8 +43,8 @@ func getIndexes(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // TODO: not implemented yet
-    sendError(w, 0)
+    //response := &subResp{Status: "ok", Version: apiVersion}
+    //genresArr := make([]genre, 10)
 }
 
 // Returns a listing of all files in a music directory
@@ -65,8 +65,28 @@ func getGenres(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // TODO: not implemented yet
-    sendError(w, 0)
+    genreMap := database.GetGenres()
+    response := &subResp{Status: "ok", Version: apiVersion}
+    var genresArr []genre
+    for k, v := range genreMap {
+        genresArr = append(genresArr,
+            genre{
+                SongCount: strconv.Itoa(v.SongCount),
+                AlbumCount: strconv.Itoa(v.AlbumCount),
+                Genre: k},
+        )
+    }
+
+    genres := &genres{Genres: genresArr}
+    response.Genres = genres
+    encoded, err := xml.MarshalIndent(response, "  ", "    ")
+    if err != nil {
+        fmt.Println(err)
+    }
+
+    w.WriteHeader(http.StatusOK)
+    w.Header().Set("Content-Type", "application/xml")
+    w.Write(encoded)
 }
 
 // Returns an indexed structure of all artists organized by ID3 tags

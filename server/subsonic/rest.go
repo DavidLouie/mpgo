@@ -37,6 +37,7 @@ type subParams struct {
 // Initialize server and REST endpoints
 func Init() {
     http.HandleFunc("/rest/getMusicFolders", getMusicFolders)
+    http.HandleFunc("/rest/getGenres", getGenres)
     log.Fatal(http.ListenAndServe(":8080", nil))
 }
 

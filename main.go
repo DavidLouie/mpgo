@@ -5,15 +5,15 @@ import (
 
     "github.com/davidlouie/mpgo/database"
     "github.com/davidlouie/mpgo/scanner"
-    // "github.com/davidlouie/mpgo/server"
+    "github.com/davidlouie/mpgo/server"
 )
 
 func main() {
     db := database.Init()
     defer db.Close()
     fmt.Println("Scanning or updating files")
-    scanner.Scan(db)
+    scanner.Scan()
     //scanner.ScanNewFiles(db)
-    // server.Play()
+    server.Play()
     // Init()
 }

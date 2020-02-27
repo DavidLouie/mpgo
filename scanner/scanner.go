@@ -1,8 +1,7 @@
 package scanner
 
 import (
-    "database/sql"
-    "fmt"
+    // "fmt"
     "log"
     "os"
     "path/filepath"
@@ -26,8 +25,8 @@ var audioExts = map[string]struct{}{
 
 // Scans for music files starting at folder
 // Assumes folder structure is: {folder}/{Artist}/{Album}/{Song}
-func Scan(db *sql.DB) {
-    database.SetLastScannedTime(db)
+func Scan() {
+    database.SetLastScannedTime()
     err := filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
         if err != nil {
             return err
@@ -36,7 +35,7 @@ func Scan(db *sql.DB) {
         if info.IsDir() {
             return nil 
         }
-        return scanFile(db, path, info, err)
+        return scanFile(path, info, err)
     })
     if err != nil {
         log.Fatal(err)
@@ -44,10 +43,8 @@ func Scan(db *sql.DB) {
 }
 
 // Scans for new music files created or modified since lastScanned
-func ScanNewFiles(db *sql.DB) {
-    lastScanned := database.GetLastScannedTime(db)
-    fmt.Println("got lastScanned time")
-    fmt.Println(lastScanned)
+func ScanNewFiles() {
+    lastScanned := database.GetLastScannedTime()
     err := filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
         if err != nil {
             return err
@@ -58,7 +55,7 @@ func ScanNewFiles(db *sql.DB) {
         }
 
         if info.ModTime().After(lastScanned) {
-            return scanFile(db, path, info, err)
+            return scanFile(path, info, err)
         }
         return nil
     })
@@ -68,9 +65,9 @@ func ScanNewFiles(db *sql.DB) {
 }
 
 // Scans given file and adds it into the library database based on tags
-func scanFile(db *sql.DB, path string, info os.FileInfo, err error) error {
+func scanFile(path string, info os.FileInfo, err error) error {
     fileExt := filepath.Ext(path)
-    fmt.Println(filepath.Base(path))
+    // fmt.Println(filepath.Base(path))
     if _, ok := audioExts[fileExt]; ok {
         f, err := os.Open(path)
         if err != nil {

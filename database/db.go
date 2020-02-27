@@ -13,11 +13,13 @@ import (
 const dbPath = "./database/mpgo.db"
 const datetimeId = 0
 
+var db *sql.DB
+
 func Init() *sql.DB {
     os.Remove(dbPath) // TODO Remove
     _, err := os.Stat(dbPath)
     dbNotExists := os.IsNotExist(err)
-    db, err := sql.Open("sqlite3", dbPath)
+    db, err = sql.Open("sqlite3", dbPath)
     if err != nil {
         log.Fatal(err)
     }
@@ -25,19 +27,19 @@ func Init() *sql.DB {
     // If database doesn't exist yet, create tables
     if dbNotExists {
         fmt.Println("creating database")
-        createArtistsTable(db)
-        createAlbumsTable(db)
-        createSongsTable(db)
-        createDatetimeTable(db)
+        createArtistsTable()
+        createAlbumsTable()
+        createSongsTable()
+        createDatetimeTable()
     }
 
-    AddArtist = initAddArtist(db)
-    AddAlbum = initAddAlbum(db)
-    AddSong = initAddSong(db)
+    AddArtist = initAddArtist()
+    AddAlbum = initAddAlbum()
+    AddSong = initAddSong()
     return db
 }
 
-func createArtistsTable(db *sql.DB) {
+func createArtistsTable() {
     sqlStmt := `CREATE TABLE Artists (
         artistId   INTEGER PRIMARY KEY,
         artistName TEXT UNIQUE
@@ -48,7 +50,7 @@ func createArtistsTable(db *sql.DB) {
     }
 }
 
-func createAlbumsTable(db *sql.DB) {
+func createAlbumsTable() {
     sqlStmt := `CREATE TABLE Albums (
         albumId    INTEGER PRIMARY KEY,
         albumTitle TEXT,
@@ -63,7 +65,7 @@ func createAlbumsTable(db *sql.DB) {
     }
 }
 
-func createSongsTable(db *sql.DB) {
+func createSongsTable() {
     sqlStmt := `CREATE TABLE Songs (
         songId     INTEGER PRIMARY KEY,
         songTitle  TEXT,
@@ -82,7 +84,7 @@ func createSongsTable(db *sql.DB) {
     }
 }
 
-func createDatetimeTable(db *sql.DB) {
+func createDatetimeTable() {
     sqlStmt := `CREATE TABLE Datetime (
         id INTEGER PRIMARY KEY CHECK (id = 0),
         dt TEXT
@@ -95,7 +97,7 @@ func createDatetimeTable(db *sql.DB) {
 
 // Inserts or updates the current time into Datetime
 // format is YYYY-MM-DD HH:MM:SS
-func SetLastScannedTime(db *sql.DB) {
+func SetLastScannedTime() {
     sqlStmt := `INSERT INTO Datetime (id, dt) VALUES(?, datetime('now'))
         ON CONFLICT (id) DO UPDATE SET
         dt = excluded.dt`
@@ -105,7 +107,7 @@ func SetLastScannedTime(db *sql.DB) {
     }
 }
 
-func GetLastScannedTime(db *sql.DB) time.Time {
+func GetLastScannedTime() time.Time {
     sqlStmt := "SELECT * FROM Datetime"
     row := db.QueryRow(sqlStmt, datetimeId)
     var dtStr string
@@ -125,7 +127,7 @@ func GetLastScannedTime(db *sql.DB) time.Time {
 }
 
 // Creates the AddArtist func, preparing statements in the closure
-func initAddArtist(db *sql.DB) func(string) int {
+func initAddArtist() func(string) int {
     // insert if artist doesn't already exist
     insStmt, err := db.Prepare(`
         INSERT INTO Artists(artistId, artistName)
@@ -162,7 +164,7 @@ func initAddArtist(db *sql.DB) func(string) int {
 var AddArtist func (artistName string) int
 
 // Creates the AddAlbum func, preparing statements in the closure
-func initAddAlbum(db *sql.DB) func(string, string, int, int) int {
+func initAddAlbum() func(string, string, int, int) int {
     // insert if album doesn't already exist
     insStmt, err := db.Prepare(`
         INSERT INTO Albums(albumId, albumTitle, genre, date, artistId)
@@ -200,7 +202,7 @@ func initAddAlbum(db *sql.DB) func(string, string, int, int) int {
 var AddAlbum func (albumTitle string, genre string, date int, artistId int) int
 
 // Creates the AddSong func, preparing statements in the closure
-func initAddSong(db *sql.DB) func(string, int, int64, int, string, int64, string, int) {
+func initAddSong() func(string, int, int64, int, string, int64, string, int) {
     stmt, err := db.Prepare(`
         INSERT INTO Songs(
             songId,
@@ -255,7 +257,7 @@ var AddSong func(
         albumId   int,
 )
 
-func PrintArtists(db *sql.DB) {
+func PrintArtists() {
     rows, err := db.Query("SELECT * FROM Artists")
     if err != nil {
         log.Fatal(err)
@@ -279,8 +281,8 @@ func PrintArtists(db *sql.DB) {
     }
 }
 
-func PrintAlbums(db *sql.DB) {
-    rows, err := db.Query("SELECT albumTitle, artistId FROM Albums")
+func PrintAlbums() {
+    rows, err := db.Query("SELECT albumTitle, artistId, genre FROM Albums")
     if err != nil {
         log.Fatal(err)
     }
@@ -289,13 +291,14 @@ func PrintAlbums(db *sql.DB) {
     var (
         albumTitle string
         artistId int
+        genre string
     )
     for rows.Next() {
-        err := rows.Scan(&albumTitle, &artistId)
+        err := rows.Scan(&albumTitle, &artistId, &genre)
         if err != nil {
             log.Fatal(err)
         }
-        fmt.Println(albumTitle, artistId)
+        fmt.Println(albumTitle, artistId, genre)
     }
     err = rows.Err()
     if err != nil {
@@ -303,7 +306,7 @@ func PrintAlbums(db *sql.DB) {
     }
 }
 
-func PrintSongs(db *sql.DB) {
+func PrintSongs() {
     rows, err := db.Query("SELECT songTitle, albumId FROM Songs")
     if err != nil {
         log.Fatal(err)

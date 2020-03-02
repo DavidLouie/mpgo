@@ -86,8 +86,8 @@ func scanFile(path string, info os.FileInfo, err error) error {
             return nil
         }
 
-        artistId := database.AddArtist(m.Artist())
         dir := filepath.Dir(path)
+        artistId := database.AddArtist(m.Artist(), dir)
         albumId := database.AddAlbum(m.Album(), m.Genre(), m.Year(), artistId, dir)
 
         trackNo, _ := m.Track()

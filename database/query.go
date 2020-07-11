@@ -1,6 +1,7 @@
 package database
 
 import (
+    "database/sql"
     "log"
 )
 
@@ -18,7 +19,7 @@ type counts struct {
 
 // Returns a map of {genre: {songCount, albumCount}}
 func GetGenres() map[string]counts {
-    rows, err = db.Query(`
+    rows, err := db.Query(`
         SELECT genre, COUNT(DISTINCT albumId), COUNT(songId)
         FROM Albums, Songs
         WHERE Albums.albumId = Songs.albumId
@@ -31,7 +32,7 @@ func GetGenres() map[string]counts {
     return getGenreMapFromRows(rows)
 }
 
-func getGenreMapFromRows(rows *Rows) map[string]counts {
+func getGenreMapFromRows(rows *sql.Rows) map[string]counts {
     genreMap := make(map[string]counts)
     var (
         genre string
@@ -42,7 +43,7 @@ func getGenreMapFromRows(rows *Rows) map[string]counts {
         err := rows.Scan(
             &genre,
             &albumCount,
-            &songCount
+            &songCount,
         )
         if err != nil {
             log.Fatal(err)
@@ -50,8 +51,9 @@ func getGenreMapFromRows(rows *Rows) map[string]counts {
         genreMap[genre] = counts{AlbumCount: albumCount, SongCount: songCount}
     }
 
-    err = rows.Err()
+    err := rows.Err()
     if err != nil {
         log.Fatal(err)
     }
     return genreMap
+}

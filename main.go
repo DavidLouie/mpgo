@@ -14,6 +14,6 @@ func main() {
     fmt.Println("Scanning or updating files")
     scanner.Scan()
     //scanner.ScanNewFiles(db)
-    server.Play()
+    server.Init()
     // Init()
 }

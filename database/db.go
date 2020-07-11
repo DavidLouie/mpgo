@@ -146,7 +146,6 @@ func GetLastScannedTime() time.Time {
 
 // Creates the AddArtist func, preparing statements in the closure
 func initAddArtist() func(string) int {
-    // insert if artist doesn't already exist
     insStmt, err := db.Prepare(`
         INSERT INTO Artists(artistId, artistName)
         SELECT NULL, ?
@@ -157,7 +156,6 @@ func initAddArtist() func(string) int {
         log.Fatal(err)
     }
 
-    // get the artistId of the artist we just inserted
     qStmt, err := db.Prepare("SELECT artistId FROM Artists WHERE artistName = ?")
     if err != nil {
         log.Fatal(err)
@@ -167,7 +165,6 @@ func initAddArtist() func(string) int {
         if err != nil {
             log.Fatal(err)
         }
-
         row := qStmt.QueryRow(artistName)
         var artistId int
         err = row.Scan(&artistId)
@@ -181,7 +178,6 @@ func initAddArtist() func(string) int {
 var AddDirectory func(directoryPath string) int
 
 func initAddDirectory() func(string) int {
-    // insert if directory doesn't already exist
     insStmt, err := db.Prepare(`
         INSERT INTO Directory (directoryId, directoryPath)
         SELECT NULL, ?
@@ -192,7 +188,6 @@ func initAddDirectory() func(string) int {
         log.Fatal(err)
     }
 
-    // get the directoryId of the directory we just inserted
     qStmt, err := db.Prepare("SELECT directoryId FROM Directory WHERE directoryPath = ?")
     if err != nil {
         log.Fatal(err)
@@ -240,10 +235,9 @@ var AddArtist func (artistName string) int
 
 // Creates the AddAlbum func, preparing statements in the closure
 func initAddAlbum() func(string, string, int, int, string) int {
-    // insert if album doesn't already exist
     insStmt, err := db.Prepare(`
-        INSERT INTO Albums(albumId, albumTitle, genre, date, artistId)
-        SELECT NULL, ?, ?, ?, ?
+        INSERT INTO Albums(albumId, albumTitle, genre, date, artistId, directoryId)
+        SELECT NULL, ?, ?, ?, ?, ?
         WHERE NOT EXISTS (SELECT * FROM Albums
                           WHERE albumTitle = ?
                           AND artistId = ?)
@@ -252,14 +246,13 @@ func initAddAlbum() func(string, string, int, int, string) int {
         log.Fatal(err)
     }
 
-    // get albumId of the album we just inserted
     qStmt, err := db.Prepare("SELECT albumId FROM Albums WHERE albumTitle = ? AND artistId = ?")
     if err != nil {
         log.Fatal(err)
     }
     return func(albumTitle string, genre string, date int, artistId int, directoryPath string) int {
         directoryId := GetDirectoryId(directoryPath)
-        _, err = insStmt.Exec(albumTitle, genre, date, artistId, albumTitle, artistId, directoryId)
+        _, err = insStmt.Exec(albumTitle, genre, date, artistId, directoryId, albumTitle, artistId)
         if err != nil {
             log.Fatal(err)
         }

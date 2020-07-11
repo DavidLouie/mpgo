@@ -15,6 +15,7 @@ import (
 const apiVersion = "1.16.1"
 const username = "david"
 const password = "sesame"
+const port = 8080
 var errorMap = map[int]string{
     0:  "A generic error",
     10: "Required parameter is missing",
@@ -38,7 +39,8 @@ type subParams struct {
 func Init() {
     http.HandleFunc("/rest/getMusicFolders", getMusicFolders)
     http.HandleFunc("/rest/getGenres", getGenres)
-    log.Fatal(http.ListenAndServe(":8080", nil))
+    fmt.Printf("Listening on port %d\n", port)
+    log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }
 
 // Parse and return URL parameters from the HTTP request

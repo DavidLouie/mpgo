@@ -8,14 +8,10 @@ import (
     
     "github.com/davidlouie/mpgo/database"
     "github.com/dhowden/tag"
-    "github.com/faiface/beep"
-    "github.com/faiface/beep/flac"
-    "github.com/faiface/beep/mp3"
-    "github.com/faiface/beep/vorbis"
     _ "github.com/mattn/go-sqlite3"
 )
 
-const folder = "/home/david/Documents/"
+const folder = "/home/david/Documents/Projects/"
 // const folder = "/shared/david/Music/"
 var audioExts = map[string]struct{}{
     ".flac": struct{}{},
@@ -110,21 +106,7 @@ func scanFile(path string, info os.FileInfo, err error) error {
 
 // Returns the duration of the given flac/mp3/ogg audio file
 func getDuration(f *os.File, ext string) (int, error) {
-    var streamer beep.StreamSeeker
-    var err error
-    switch ext {
-    case ".flac":
-        streamer, _, err = flac.Decode(f)
-    case ".mp3":
-        streamer, _, err = mp3.Decode(f)
-    case ".ogg":
-        streamer, _, err = vorbis.Decode(f)
-    default:
-        log.Fatalf("Wrong filetype %s\n", ext)
-    }
-    if err != nil {
-        return 0, err
-    }
-    return streamer.Len(), nil
+    // TODO
+    return 300, nil
 }
 

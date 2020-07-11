@@ -7,6 +7,7 @@ import (
     "os"
     "time"
 
+    "github.com/davidlouie/mpgo/util"
     _ "github.com/mattn/go-sqlite3"
 )
 
@@ -38,14 +39,20 @@ func Init() *sql.DB {
     AddAlbum = initAddAlbum()
     AddSong = initAddSong()
     AddDirectory = initAddDirectory()
+
     GetDirectoryId = initGetDirectoryId()
+    GetArtistsFromDirId = initGetArtistsFromDirId()
+    GetAlbumsFromDirId = initGetAlbumsFromDirId()
+    GetSongsFromDirId = initGetSongsFromDirId()
     return db
 }
 
 func createArtistsTable() {
     sqlStmt := `CREATE TABLE Artists (
-        artistId   INTEGER PRIMARY KEY,
-        artistName TEXT UNIQUE
+        artistId    INTEGER PRIMARY KEY,
+        artistName  TEXT    UNIQUE,
+        directoryId INTEGER,
+        FOREIGN KEY (directoryId) REFERENCES Directory
     )`
     _, err := db.Exec(sqlStmt)
     if err != nil {
@@ -58,7 +65,7 @@ func createAlbumsTable() {
         albumId     INTEGER PRIMARY KEY,
         albumTitle  TEXT,
         genre       TEXT,
-        date        INTEGER,
+        year        INTEGER,
         artistId    INTEGER NOT NULL,
         directoryId INTEGER NOT NULL,
         FOREIGN KEY (artistId) REFERENCES Artists,
@@ -76,7 +83,7 @@ func createSongsTable() {
         songTitle   TEXT,
         duration    INTEGER,
         size        INTEGER,
-        number      INTEGER,
+        track       INTEGER,
         path        TEXT,
         bitrate     INTEGER,
         ext         INTEGER,
@@ -145,10 +152,11 @@ func GetLastScannedTime() time.Time {
 }
 
 // Creates the AddArtist func, preparing statements in the closure
-func initAddArtist() func(string) int {
+func initAddArtist() func(string, string) int {
+    // insert if artist doesn't already exist
     insStmt, err := db.Prepare(`
-        INSERT INTO Artists(artistId, artistName)
-        SELECT NULL, ?
+        INSERT INTO Artists(artistId, artistName, directoryId)
+        SELECT NULL, ?, ?
         WHERE NOT EXISTS (SELECT * FROM Artists
                           WHERE artistName = ?)
     `)
@@ -160,8 +168,9 @@ func initAddArtist() func(string) int {
     if err != nil {
         log.Fatal(err)
     }
-    return func(artistName string) int {
-        _, err = insStmt.Exec(artistName, artistName)
+    return func(artistName string, directoryPath string) int {
+        directoryId := GetDirectoryId(directoryPath)
+        _, err = insStmt.Exec(artistName, directoryId, artistName)
         if err != nil {
             log.Fatal(err)
         }
@@ -231,12 +240,12 @@ func initGetDirectoryId() func(string) int {
 }
 
 // Adds the artist with given name to database, returning the ID
-var AddArtist func (artistName string) int
+var AddArtist func (artistName string, directoryPath string) int
 
 // Creates the AddAlbum func, preparing statements in the closure
 func initAddAlbum() func(string, string, int, int, string) int {
     insStmt, err := db.Prepare(`
-        INSERT INTO Albums(albumId, albumTitle, genre, date, artistId, directoryId)
+        INSERT INTO Albums(albumId, albumTitle, genre, year, artistId, directoryId)
         SELECT NULL, ?, ?, ?, ?, ?
         WHERE NOT EXISTS (SELECT * FROM Albums
                           WHERE albumTitle = ?
@@ -250,9 +259,9 @@ func initAddAlbum() func(string, string, int, int, string) int {
     if err != nil {
         log.Fatal(err)
     }
-    return func(albumTitle string, genre string, date int, artistId int, directoryPath string) int {
+    return func(albumTitle string, genre string, year int, artistId int, directoryPath string) int {
         directoryId := GetDirectoryId(directoryPath)
-        _, err = insStmt.Exec(albumTitle, genre, date, artistId, directoryId, albumTitle, artistId)
+        _, err = insStmt.Exec(albumTitle, genre, year, artistId, directoryId, albumTitle, artistId)
         if err != nil {
             log.Fatal(err)
         }
@@ -268,7 +277,7 @@ func initAddAlbum() func(string, string, int, int, string) int {
 }
 
 // Adds the album with given metadata to database, returning the ID
-var AddAlbum func (albumTitle string, genre string, date int, artistId int, directoryPath string) int
+var AddAlbum func (albumTitle string, genre string, year int, artistId int, directoryPath string) int
 
 // Creates the AddSong func, preparing statements in the closure
 func initAddSong() func(string, int, int64, int, string, int64, string, int, string) {
@@ -278,7 +287,7 @@ func initAddSong() func(string, int, int64, int, string, int64, string, int, str
             songTitle,
             duration,
             size,
-            number,
+            track,
             path,
             bitrate,
             ext,
@@ -330,6 +339,127 @@ var AddSong func(
         albumId       int,
         directoryPath string,
 )
+
+var GetArtistsFromDirId func(directoryId int) []util.Artist
+
+func initGetArtistsFromDirId() func(int) []util.Artist {
+    qStmt, err := db.Prepare(`
+        SELECT artistId, artistName FROM Artists INNER JOIN Directory
+        ON Artists.directoryId = Directory.directoryId
+        WHERE Artists.directoryId = ?`)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    return func(directoryId int) []util.Artist {
+        rows, err := qStmt.Query(directoryId)
+        if err != nil {
+            log.Fatal(err)
+        }
+        defer rows.Close()
+
+        var artists []util.Artist
+        for rows.Next() {
+            artist := util.NewArtist()
+            err := rows.Scan(&artist.Id, &artist.Name)
+            if err != nil {
+                log.Fatal(err)
+            }
+            artists = append(artists, artist)
+        }
+        err = rows.Err()
+        if err != nil {
+            log.Fatal(err)
+        }
+        return artists
+   }
+}
+
+var GetAlbumsFromDirId func(directoryId int) []util.Album
+
+func initGetAlbumsFromDirId() func(int) []util.Album {
+    qStmt, err := db.Prepare(`
+        SELECT albumId, albumTitle, genre, year, artistId
+        FROM Albums INNER JOIN Directory
+        ON Albums.directoryId = Directory.directoryId
+        WHERE Albums.directoryId = ?`)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    return func(directoryId int) []util.Album {
+        rows, err := qStmt.Query(directoryId)
+        if err != nil {
+            log.Fatal(err)
+        }
+        defer rows.Close()
+
+        var albums []util.Album
+        for rows.Next() {
+            album := util.NewAlbum()
+            err := rows.Scan(
+                &album.Id,
+                &album.Title,
+                &album.Genre,
+                &album.Year,
+                &album.ArtistId)
+            if err != nil {
+                log.Fatal(err)
+            }
+            albums = append(albums, album)
+        }
+        err = rows.Err()
+        if err != nil {
+            log.Fatal(err)
+        }
+        return albums
+   }
+}
+
+var GetSongsFromDirId func(directoryId int) []util.Song
+
+func initGetSongsFromDirId() func(int) []util.Song{
+    qStmt, err := db.Prepare(`
+        SELECT songId, songTitle, duration, size, track, path, bitrate, ext, albumId
+        FROM Songs INNER JOIN Directory
+        ON Songs.directoryId = Directory.directoryId
+        WHERE Songs.directoryId = ?`)
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    return func(directoryId int) []util.Song {
+        rows, err := qStmt.Query(directoryId)
+        if err != nil {
+            log.Fatal(err)
+        }
+        defer rows.Close()
+
+        var songs []util.Song
+        for rows.Next() {
+            song := util.NewSong()
+            err := rows.Scan(
+                &song.Id,
+                &song.Title,
+                &song.Duration,
+                &song.Size,
+                &song.Track,
+                &song.Path,
+                &song.BitRate,
+                &song.Ext,
+                &song.AlbumId)
+            if err != nil {
+                log.Fatal(err)
+            }
+            songs = append(songs, song)
+        }
+        err = rows.Err()
+        if err != nil {
+            log.Fatal(err)
+        }
+        return songs
+   }
+}
 
 func PrintArtists() {
     rows, err := db.Query("SELECT * FROM Artists")

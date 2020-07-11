@@ -23,9 +23,9 @@ type counts struct {
 // GetGenres returns a map of {genre: {songCount, albumCount}}.
 func GetGenres() GenreCounts {
 	rows, err := db.Query(`
-        SELECT genre, COUNT(DISTINCT albumID), COUNT(songID)
-        FROM Albums, Songs
-        WHERE Albums.albumID = Songs.albumID
+        SELECT genre, COUNT(DISTINCT A.albumID), COUNT(S.songID)
+        FROM Albums A, Songs S
+        WHERE A.albumID = S.albumID
         GROUP BY genre
     `)
 	if err != nil {

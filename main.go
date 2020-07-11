@@ -15,5 +15,4 @@ func main() {
 	scanner.Scan()
 	//scanner.ScanNewFiles(db)
 	server.Init()
-	// Init()
 }

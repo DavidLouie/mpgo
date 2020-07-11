@@ -1,37 +1,42 @@
 package util
 
+// Artist is an artist with an ID and a name.
 type Artist struct {
-	Id   int
+	ID   int
 	Name string
 }
 
+// NewArtist default initializes Artist.
 func NewArtist() Artist {
 	a := Artist{}
-	a.Id = -1
+	a.ID = -1
 	a.Name = ""
 	return a
 }
 
+// Album is an album with some metadata.
 type Album struct {
-	Id       int
+	ID       int
 	Title    string
 	Genre    string
 	Year     int
-	ArtistId int
+	ArtistID int
 }
 
+// NewAlbum default initializes Album.
 func NewAlbum() Album {
 	a := Album{}
-	a.Id = -1
+	a.ID = -1
 	a.Title = ""
 	a.Genre = ""
 	a.Year = -1
-	a.ArtistId = -1
+	a.ArtistID = -1
 	return a
 }
 
+// Song is a song with related metadata.
 type Song struct {
-	Id       int
+	ID       int
 	Title    string
 	Duration int
 	Size     int
@@ -39,12 +44,13 @@ type Song struct {
 	Path     string
 	BitRate  int
 	Ext      string
-	AlbumId  int
+	AlbumID  int
 }
 
+// NewSong default initializes Song.
 func NewSong() Song {
 	s := Song{}
-	s.Id = -1
+	s.ID = -1
 	s.Title = ""
 	s.Duration = -1
 	s.Size = -1
@@ -52,6 +58,6 @@ func NewSong() Song {
 	s.Path = ""
 	s.BitRate = -1
 	s.Ext = ""
-	s.AlbumId = -1
+	s.AlbumID = -1
 	return s
 }

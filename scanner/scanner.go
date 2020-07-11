@@ -8,7 +8,6 @@ import (
 
 	"github.com/davidlouie/mpgo/database"
 	"github.com/dhowden/tag"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 const folder = "/home/david/Documents/Projects/"
@@ -20,8 +19,8 @@ var audioExts = map[string]struct{}{
 	".ogg":  {},
 }
 
-// Scans for music files starting at folder
-// Assumes folder structure is: {folder}/{Artist}/{Album}/{Song}
+// Scan recursively searches for music files starting at folder.
+// Assumes folder structure is: {folder}/{Artist}/{Album}/{Song}.
 func Scan() {
 	database.SetLastScannedTime()
 	err := filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
@@ -41,7 +40,7 @@ func Scan() {
 	}
 }
 
-// Scans for new music files created or modified since lastScanned
+// ScanNewFiles searches for new music files created or modified since lastScanned
 func ScanNewFiles() {
 	lastScanned := database.GetLastScannedTime()
 	err := filepath.Walk(folder, func(path string, info os.FileInfo, err error) error {
@@ -84,8 +83,8 @@ func scanFile(path string, info os.FileInfo, err error) error {
 		}
 
 		dir := filepath.Dir(path)
-		artistId := database.AddArtist(m.Artist(), dir)
-		albumId := database.AddAlbum(m.Album(), m.Genre(), m.Year(), artistId, dir)
+		artistID := database.AddArtist(m.Artist(), dir)
+		albumID := database.AddAlbum(m.Album(), m.Genre(), m.Year(), artistID, dir)
 
 		trackNo, _ := m.Track()
 		size := info.Size()
@@ -98,7 +97,7 @@ func scanFile(path string, info os.FileInfo, err error) error {
 			path,
 			bitrate,
 			fileExt,
-			albumId,
+			albumID,
 			dir,
 		)
 	}

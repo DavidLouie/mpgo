@@ -36,7 +36,7 @@ type subParams struct {
 	client   string
 }
 
-// Initialize server and REST endpoints
+// Init initializes the server and REST endpoints
 func Init() {
 	http.HandleFunc("/rest/getMusicFolders", getMusicFolders)
 	http.HandleFunc("/rest/getGenres", getGenres)

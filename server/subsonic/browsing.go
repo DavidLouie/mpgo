@@ -20,7 +20,7 @@ func getMusicFolders(w http.ResponseWriter, r *http.Request) {
 	response := &subResp{Status: "ok", Version: apiVersion}
 	foldersArr := make([]musicFolder, len(f))
 	for i, folder := range f {
-		foldersArr[i].Id = strconv.Itoa(i)
+		foldersArr[i].ID = strconv.Itoa(i)
 		foldersArr[i].Name = folder
 	}
 

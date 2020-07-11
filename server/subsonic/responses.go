@@ -9,8 +9,8 @@ type subResp struct {
 	Status       string        `xml:"status,attr"`
 	Version      string        `xml:"version,attr"`
 	ErrorCode    *errorCode    `xml:"error,omitempty"`
-	MusicFolders *musicFolders `xml:"musicFolders,omitempty"i`
-	Genres       *genres       `xml:"genres,omitempty"i`
+	MusicFolders *musicFolders `xml:"musicFolders,omitempty"`
+	Genres       *genres       `xml:"genres,omitempty"`
 }
 
 type errorCode struct {
@@ -19,7 +19,7 @@ type errorCode struct {
 }
 
 type musicFolder struct {
-	Id   string `xml:"id,attr"`
+	ID   string `xml:"id,attr"`
 	Name string `xml:"name,attr"`
 }
 
@@ -32,7 +32,7 @@ type directory struct {
 }
 
 type dirChild struct {
-	Id         int    `xml:"id,attr"`
+	ID         int    `xml:"id,attr"`
 	Parent     int    `xml:"parent,attr"`
 	Title      string `xml:"title,attr"`
 	IsDir      bool   `xml:"isDir,attr"`

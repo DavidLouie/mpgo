@@ -5,25 +5,27 @@ import (
 	"log"
 )
 
-const ROOT = "/home/david/"
+var folders = []string{"Music"}
 
-var FOLDERS = []string{"Music"}
-
+// GetMusicFolders returns the music folders added to the database.
 func GetMusicFolders() []string {
-	return FOLDERS
+	return folders
 }
+
+// GenreCounts is a map from genre to the number of albums and songs in the genre
+type GenreCounts map[string]counts
 
 type counts struct {
 	SongCount  int
 	AlbumCount int
 }
 
-// Returns a map of {genre: {songCount, albumCount}}
-func GetGenres() map[string]counts {
+// GetGenres returns a map of {genre: {songCount, albumCount}}.
+func GetGenres() GenreCounts {
 	rows, err := db.Query(`
-        SELECT genre, COUNT(DISTINCT albumId), COUNT(songId)
+        SELECT genre, COUNT(DISTINCT albumID), COUNT(songID)
         FROM Albums, Songs
-        WHERE Albums.albumId = Songs.albumId
+        WHERE Albums.albumID = Songs.albumID
         GROUP BY genre
     `)
 	if err != nil {
